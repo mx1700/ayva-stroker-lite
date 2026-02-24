@@ -581,47 +581,47 @@ export default {
     },
 
     patreonPromo () {
-      const checkboxStorage = new Storage('checkbox-value');
-      const resetPromoStorage = new Storage('promo-reset');
+      // const checkboxStorage = new Storage('checkbox-value');
+      // const resetPromoStorage = new Storage('promo-reset');
 
-      if (!resetPromoStorage.load('patreon')) {
-        checkboxStorage.save('patreon-promo-disabled', false);
-        resetPromoStorage.save('patreon', true);
-      }
+      // if (!resetPromoStorage.load('patreon')) {
+      //   checkboxStorage.save('patreon-promo-disabled', false);
+      //   resetPromoStorage.save('patreon', true);
+      // }
 
-      const patreonPromoDisabled = checkboxStorage.load('patreon-promo-disabled');
+      // const patreonPromoDisabled = checkboxStorage.load('patreon-promo-disabled');
 
-      if (patreonPromoDisabled) {
-        return;
-      }
+      // if (patreonPromoDisabled) {
+      //   return;
+      // }
 
-      const patreonStyle = { style: 'color: rgb(255, 66, 77)' };
+      // const patreonStyle = { style: 'color: rgb(255, 66, 77)' };
 
-      setTimeout(() => {
-        this.notify.info({
-          content: 'Enjoy Ayva Stroker Lite?',
-          meta: () => h(
-            'div',
-            [
-              'Support this software by becoming a ',
-              h('a', {
-                href: this.patreonUrl,
-                target: '_blank',
-                ...patreonStyle,
-              }, 'patron.'),
-              h(
-                'div',
-                { class: 'lil-gui patreon-promo-disable' },
-                [
-                  h('span', 'Don\'t show this message again.'),
-                  h(AyvaCheckbox, {
-                    storageKey: 'patreon-promo-disabled',
-                  })]
-              )]
-          ),
-          avatar: () => h(PatreonIcon, patreonStyle),
-        });
-      }, 30000);
+      // setTimeout(() => {
+      //   this.notify.info({
+      //     content: 'Enjoy Ayva Stroker Lite?',
+      //     meta: () => h(
+      //       'div',
+      //       [
+      //         'Support this software by becoming a ',
+      //         h('a', {
+      //           href: this.patreonUrl,
+      //           target: '_blank',
+      //           ...patreonStyle,
+      //         }, 'patron.'),
+      //         h(
+      //           'div',
+      //           { class: 'lil-gui patreon-promo-disable' },
+      //           [
+      //             h('span', 'Don\'t show this message again.'),
+      //             h(AyvaCheckbox, {
+      //               storageKey: 'patreon-promo-disabled',
+      //             })]
+      //         )]
+      //     ),
+      //     avatar: () => h(PatreonIcon, patreonStyle),
+      //   });
+      // }, 30000);
     },
 
     createRubjoyEmulator (element) {
