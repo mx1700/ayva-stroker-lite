@@ -81,6 +81,7 @@
             BPM Range
           </div>
           <ayva-slider
+            ref="bpmSlider"
             :options="bpmOptions"
             storage-key="free-play-bpm"
             @update="onUpdate('bpm', $event)"
@@ -92,6 +93,7 @@
             Acceleration (bpm/s)
           </div>
           <ayva-slider
+            ref="accelerationSlider"
             :options="accelerationOptions"
             :disabled="disableAcceleration"
             storage-key="free-play-acceleration"
@@ -104,6 +106,7 @@
             Pattern Duration
           </div>
           <ayva-slider
+            ref="patternDurationSlider"
             :options="patternDurationOptions"
             storage-key="free-play-pattern-duration"
             @update="onUpdate('pattern-duration', $event)"
@@ -169,6 +172,7 @@
             Twist Eccentricity
           </div>
           <ayva-slider
+            ref="twistEccSlider"
             :options="twistEccOptions"
             :disabled="disableTwist"
             storage-key="free-play-twist-ecc"
@@ -869,15 +873,17 @@ export default {
       // Apply parameters
       const { params, strokes } = preset;
 
+      console.log(params);
+
       this.bpmMode = params.bpmMode;
-      this.bpmOptions.start = params.bpm;
-      this.accelerationOptions.start = params.acceleration;
-      this.patternDurationOptions.start = params.patternDuration;
-      this.transitionDurationOptions.start = params.transitionDuration;
+      this.bpmOptions = { ...this.bpmOptions, start: [...params.bpm] };
+      this.accelerationOptions = { ...this.accelerationOptions, start: [...params.acceleration] };
+      this.patternDurationOptions = { ...this.patternDurationOptions, start: [...params.patternDuration] };
+      this.transitionDurationOptions = { ...this.transitionDurationOptions, start: [...params.transitionDuration] };
       this.twist = params.twist;
-      this.twistRangeOptions.start = params.twistRange;
-      this.twistPhaseOptions.start = params.twistPhase;
-      this.twistEccOptions.start = params.twistEcc;
+      this.twistRangeOptions = { ...this.twistRangeOptions, start: [...params.twistRange] };
+      this.twistPhaseOptions = { ...this.twistPhaseOptions, start: Array.isArray(params.twistPhase) ? [...params.twistPhase] : params.twistPhase };
+      this.twistEccOptions = { ...this.twistEccOptions, start: Array.isArray(params.twistEcc) ? [...params.twistEcc] : params.twistEcc };
 
       // Apply stroke enabled states
       this.strokes.forEach((stroke) => {
@@ -886,18 +892,46 @@ export default {
         }
       });
 
-      // Emit updates to parent component
-      this.fireUpdateParameter('bpm-mode', this.bpmMode);
-      this.fireUpdateParameter('bpm', this.bpmOptions.start);
-      this.fireUpdateParameter('acceleration', this.accelerationOptions.start);
-      this.fireUpdateParameter('pattern-duration', this.patternDurationOptions.start);
-      this.fireUpdateParameter('transition-duration', this.transitionDurationOptions.start);
-      this.fireUpdateParameter('twist', this.twist);
-      this.fireUpdateParameter('twist-range', this.twistRangeOptions.start);
-      this.fireUpdateParameter('twist-phase', this.twistPhaseOptions.start);
-      this.fireUpdateParameter('twist-ecc', this.twistEccOptions.start);
+      // Use nextTick to ensure DOM is updated, then call slider set methods
+      this.$nextTick(() => {
+        // Call slider set methods to update the actual slider values
+        if (this.$refs.bpmSlider) {
+          this.$refs.bpmSlider.set(...params.bpm);
+        }
+        if (this.$refs.accelerationSlider) {
+          this.$refs.accelerationSlider.set(...params.acceleration);
+        }
+        if (this.$refs.patternDurationSlider) {
+          this.$refs.patternDurationSlider.set(...params.patternDuration);
+        }
+        if (this.$refs.transitionDurationSlider) {
+          this.$refs.transitionDurationSlider.set(...params.transitionDuration);
+        }
+        if (this.$refs.twistRangeSlider) {
+          this.$refs.twistRangeSlider.set(...params.twistRange);
+        }
+        if (this.$refs.twistPhaseSlider) {
+          const twistPhaseValue = Array.isArray(params.twistPhase) ? params.twistPhase : [params.twistPhase];
+          this.$refs.twistPhaseSlider.set(...twistPhaseValue);
+        }
+        if (this.$refs.twistEccSlider) {
+          const twistEccValue = Array.isArray(params.twistEcc) ? params.twistEcc : [params.twistEcc];
+          this.$refs.twistEccSlider.set(...twistEccValue);
+        }
 
-      this.fireUpdateStrokes();
+        // Emit updates to parent component
+        this.fireUpdateParameter('bpm-mode', this.bpmMode);
+        this.fireUpdateParameter('bpm', this.bpmOptions.start);
+        this.fireUpdateParameter('acceleration', this.accelerationOptions.start);
+        this.fireUpdateParameter('pattern-duration', this.patternDurationOptions.start);
+        this.fireUpdateParameter('transition-duration', this.transitionDurationOptions.start);
+        this.fireUpdateParameter('twist', this.twist);
+        this.fireUpdateParameter('twist-range', this.twistRangeOptions.start);
+        this.fireUpdateParameter('twist-phase', this.twistPhaseOptions.start);
+        this.fireUpdateParameter('twist-ecc', this.twistEccOptions.start);
+
+        this.fireUpdateStrokes();
+      });
 
       this.notify.success({
         content: `Applied preset "${name}"`,
@@ -906,6 +940,7 @@ export default {
 
     overwritePreset (name) {
       const data = this.getCurrentParameters();
+      console.log('overwritePreset', data);
       presetStorage.save(name, data);
 
       this.notify.success({
