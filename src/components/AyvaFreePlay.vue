@@ -876,6 +876,7 @@ export default {
 
       this.notify.success({
         content: `Preset "${name}" saved successfully`,
+        duration: 1000,
       });
     },
 
@@ -891,8 +892,6 @@ export default {
 
       // Apply parameters via v-model binding
       const { params, strokes } = preset;
-
-      console.log(params);
 
       this.bpmMode = params.bpmMode;
       this.bpmValue = [...params.bpm];
@@ -954,16 +953,17 @@ export default {
 
       this.notify.success({
         content: `Applied preset "${name}"`,
+        duration: 1000,
       });
     },
 
     overwritePreset (name) {
       const data = this.getCurrentParameters();
-      console.log('overwritePreset', data);
       presetStorage.save(name, data);
 
       this.notify.success({
         content: `Preset "${name}" overwritten`,
+        duration: 1000,
       });
     },
 
@@ -1019,6 +1019,7 @@ export default {
 
         this.notify.success({
           content: `Preset renamed to "${newName}"`,
+          duration: 1000,
         });
       } else {
         this.notify.error({
