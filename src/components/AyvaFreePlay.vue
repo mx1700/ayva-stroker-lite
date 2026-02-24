@@ -201,12 +201,122 @@
       </div>
     </div>
 
+    <!-- Presets Section -->
+    <div class="free-play-container lil-gui root">
+      <div class="title">
+        <span>Presets</span>
+        <span class="preset-actions">
+          <button
+            class="preset-save-btn"
+            title="Save current settings as preset"
+            @click="openSavePresetModal"
+          >
+            + Save
+          </button>
+        </span>
+      </div>
+      <div class="limits lil-gui children preset-list">
+        <div v-if="presets.length === 0" class="no-presets">
+          No presets saved yet. Click "+ Save" to save current settings.
+        </div>
+        <div
+          v-for="preset in presets"
+          :key="preset"
+          class="preset-item"
+        >
+          <button
+            class="preset-name"
+            title="Click to apply preset"
+            @click="applyPreset(preset)"
+          >
+            {{ preset }}
+          </button>
+          <div class="preset-item-actions">
+            <button
+              class="preset-action-btn"
+              title="Rename preset"
+              @click="openRenamePresetModal(preset)"
+            >
+              ✎
+            </button>
+            <button
+              class="preset-action-btn delete"
+              title="Delete preset"
+              @click="deletePreset(preset)"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <ayva-modal :show="showStrokeEditor" lil-gui>
       <tempest-stroke-editor ref="strokeEditor" :edit-stroke="editStroke" @close="showStrokeEditor = false" @save="refreshStrokes" />
     </ayva-modal>
 
     <ayva-modal :show="showScriptEditor" lil-gui>
       <ayva-script-editor ref="strokeEditor" :edit-script="editScript" @close="showScriptEditor = false" @save="refreshStrokes" />
+    </ayva-modal>
+
+    <!-- Save Preset Modal -->
+    <ayva-modal :show="showSavePresetModal" @close="closeSavePresetModal">
+      <div class="preset-modal">
+        <div class="preset-modal-title">
+          Save Preset
+        </div>
+        <div class="preset-modal-content">
+          <input
+            v-model="newPresetName"
+            type="text"
+            class="preset-name-input"
+            placeholder="Enter preset name"
+            @keyup.enter="savePreset"
+            @keyup.escape="closeSavePresetModal"
+          >
+          <div v-if="newPresetNameError" class="preset-error">
+            {{ newPresetNameError }}
+          </div>
+        </div>
+        <div class="preset-modal-actions">
+          <button class="preset-modal-btn cancel" @click="closeSavePresetModal">
+            Cancel
+          </button>
+          <button class="preset-modal-btn save" @click="savePreset">
+            Save
+          </button>
+        </div>
+      </div>
+    </ayva-modal>
+
+    <!-- Rename Preset Modal -->
+    <ayva-modal :show="showRenamePresetModal" @close="closeRenamePresetModal">
+      <div class="preset-modal">
+        <div class="preset-modal-title">
+          Rename Preset
+        </div>
+        <div class="preset-modal-content">
+          <input
+            v-model="newPresetName"
+            type="text"
+            class="preset-name-input"
+            placeholder="Enter new preset name"
+            @keyup.enter="renamePreset"
+            @keyup.escape="closeRenamePresetModal"
+          >
+          <div v-if="newPresetNameError" class="preset-error">
+            {{ newPresetNameError }}
+          </div>
+        </div>
+        <div class="preset-modal-actions">
+          <button class="preset-modal-btn cancel" @click="closeRenamePresetModal">
+            Cancel
+          </button>
+          <button class="preset-modal-btn save" @click="renamePreset">
+            Rename
+          </button>
+        </div>
+      </div>
     </ayva-modal>
   </div>
 </template>
@@ -227,11 +337,13 @@ import {
   makeCollapsible, formatter, clampHeight
 } from '../lib/util.js';
 import CustomBehaviorStorage from '../lib/custom-behavior-storage.js';
+import FreePlayPresetStorage from '../lib/free-play-preset-storage.js';
 
 let previewAyva = null;
 let previewEmulator = null;
 
 const customBehaviorStorage = new CustomBehaviorStorage();
+const presetStorage = new FreePlayPresetStorage();
 
 export default {
 
@@ -374,6 +486,14 @@ export default {
         key: 'delete',
         label: 'Delete',
       }],
+
+      // Preset management
+      presets: [],
+      showSavePresetModal: false,
+      showRenamePresetModal: false,
+      newPresetName: '',
+      editingPresetName: '',
+      newPresetNameError: '',
     };
   },
 
@@ -440,6 +560,8 @@ export default {
     this.onResize();
 
     this.fireUpdateParameter('bpm-mode', this.bpmMode);
+
+    this.loadPresets();
   },
 
   unmounted () {
@@ -649,6 +771,174 @@ export default {
         previewEmulator = new OSREmulator(this.previewElement, { model: this.deviceType });
       }
     },
+
+    // ==================== Preset Management ====================
+
+    loadPresets () {
+      this.presets = presetStorage.list();
+    },
+
+    getCurrentParameters () {
+      // Get values from slider components via refs
+      const params = {
+        bpmMode: this.bpmMode,
+        bpm: this.bpmOptions.start,
+        acceleration: this.accelerationOptions.start,
+        patternDuration: this.patternDurationOptions.start,
+        transitionDuration: this.transitionDurationOptions.start,
+        twist: this.twist,
+        twistRange: this.twistRangeOptions.start,
+        twistPhase: this.twistPhaseOptions.start,
+        twistEcc: this.twistEccOptions.start,
+      };
+
+      // Get stroke enabled states
+      const strokeStates = {};
+      this.strokes.forEach((stroke) => {
+        strokeStates[stroke.name] = stroke.enabled;
+      });
+
+      return {
+        params,
+        strokes: strokeStates,
+      };
+    },
+
+    savePreset () {
+      const name = this.newPresetName.trim();
+
+      if (!name) {
+        this.newPresetNameError = 'Preset name cannot be empty';
+        return;
+      }
+
+      if (this.presets.includes(name)) {
+        this.newPresetNameError = 'Preset name already exists';
+        return;
+      }
+
+      const data = this.getCurrentParameters();
+      presetStorage.save(name, data);
+      this.loadPresets();
+      this.closeSavePresetModal();
+
+      this.notify.success({
+        content: `Preset "${name}" saved successfully`,
+      });
+    },
+
+    applyPreset (name) {
+      const preset = presetStorage.get(name);
+
+      if (!preset) {
+        this.notify.error({
+          content: `Preset "${name}" not found`,
+        });
+        return;
+      }
+
+      // Apply parameters
+      const { params, strokes } = preset;
+
+      this.bpmMode = params.bpmMode;
+      this.bpmOptions.start = params.bpm;
+      this.accelerationOptions.start = params.acceleration;
+      this.patternDurationOptions.start = params.patternDuration;
+      this.transitionDurationOptions.start = params.transitionDuration;
+      this.twist = params.twist;
+      this.twistRangeOptions.start = params.twistRange;
+      this.twistPhaseOptions.start = params.twistPhase;
+      this.twistEccOptions.start = params.twistEcc;
+
+      // Apply stroke enabled states
+      this.strokes.forEach((stroke) => {
+        if (strokes[stroke.name] !== undefined) {
+          stroke.enabled = strokes[stroke.name];
+        }
+      });
+
+      // Emit updates to parent component
+      this.fireUpdateParameter('bpm-mode', this.bpmMode);
+      this.fireUpdateParameter('bpm', this.bpmOptions.start);
+      this.fireUpdateParameter('acceleration', this.accelerationOptions.start);
+      this.fireUpdateParameter('pattern-duration', this.patternDurationOptions.start);
+      this.fireUpdateParameter('transition-duration', this.transitionDurationOptions.start);
+      this.fireUpdateParameter('twist', this.twist);
+      this.fireUpdateParameter('twist-range', this.twistRangeOptions.start);
+      this.fireUpdateParameter('twist-phase', this.twistPhaseOptions.start);
+      this.fireUpdateParameter('twist-ecc', this.twistEccOptions.start);
+
+      this.fireUpdateStrokes();
+
+      this.notify.success({
+        content: `Applied preset "${name}"`,
+      });
+    },
+
+    deletePreset (name) {
+      presetStorage.delete(name);
+      this.loadPresets();
+
+      this.notify.info({
+        content: `Preset "${name}" deleted`,
+      });
+    },
+
+    renamePreset () {
+      const oldName = this.editingPresetName;
+      const newName = this.newPresetName.trim();
+
+      if (!newName) {
+        this.newPresetNameError = 'Preset name cannot be empty';
+        return;
+      }
+
+      if (this.presets.includes(newName) && newName !== oldName) {
+        this.newPresetNameError = 'Preset name already exists';
+        return;
+      }
+
+      const success = presetStorage.rename(oldName, newName);
+
+      if (success) {
+        this.loadPresets();
+        this.closeRenamePresetModal();
+
+        this.notify.success({
+          content: `Preset renamed to "${newName}"`,
+        });
+      } else {
+        this.notify.error({
+          content: 'Failed to rename preset',
+        });
+      }
+    },
+
+    openSavePresetModal () {
+      this.newPresetName = '';
+      this.newPresetNameError = '';
+      this.showSavePresetModal = true;
+    },
+
+    closeSavePresetModal () {
+      this.showSavePresetModal = false;
+      this.newPresetName = '';
+      this.newPresetNameError = '';
+    },
+
+    openRenamePresetModal (name) {
+      this.editingPresetName = name;
+      this.newPresetName = name;
+      this.newPresetNameError = '';
+      this.showRenamePresetModal = true;
+    },
+
+    closeRenamePresetModal () {
+      this.showRenamePresetModal = false;
+      this.editingPresetName = '';
+      this.newPresetName = '';
+      this.newPresetNameError = '';
+    },
   },
 };
 </script>
@@ -743,5 +1033,161 @@ export default {
 
 .guide a {
   color: var(--ayva-blue);
+}
+
+/* Preset Section Styles */
+.preset-actions {
+  margin-left: auto;
+}
+
+.preset-save-btn {
+  background: var(--ayva-blue);
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.preset-save-btn:hover {
+  background: #1e88e5;
+}
+
+.preset-list {
+  padding-top: 0 !important;
+}
+
+.no-presets {
+  padding: 15px;
+  text-align: center;
+  color: var(--ayva-text-color);
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.preset-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.preset-item:last-child {
+  border-bottom: none;
+}
+
+.preset-name {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--ayva-text-color);
+  text-align: left;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.preset-name:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.preset-item-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.preset-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--ayva-text-color);
+  cursor: pointer;
+  padding: 3px 6px;
+  font-size: 12px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.preset-action-btn:hover {
+  opacity: 1;
+}
+
+.preset-action-btn.delete:hover {
+  color: #ff5252;
+}
+
+/* Preset Modal Styles */
+.preset-modal {
+  padding: 20px;
+  min-width: 300px;
+}
+
+.preset-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--ayva-text-color);
+}
+
+.preset-modal-content {
+  margin-bottom: 20px;
+}
+
+.preset-name-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--ayva-text-color);
+  font-size: 14px;
+}
+
+.preset-name-input:focus {
+  outline: none;
+  border-color: var(--ayva-blue);
+}
+
+.preset-error {
+  color: #ff5252;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.preset-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.preset-modal-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.preset-modal-btn.cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ayva-text-color);
+}
+
+.preset-modal-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.preset-modal-btn.save {
+  background: var(--ayva-blue);
+  color: white;
+}
+
+.preset-modal-btn.save:hover {
+  background: #1e88e5;
 }
 </style>
