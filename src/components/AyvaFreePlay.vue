@@ -1,5 +1,62 @@
 <template>
   <div class="free-play">
+    <!-- Presets Section - Top -->
+    <div class="free-play-container lil-gui root">
+      <div class="title">
+        <span>Presets</span>
+        <span class="preset-actions">
+          <button
+            class="preset-save-btn"
+            title="Save current settings as preset"
+            @click="openSavePresetModal"
+          >
+            + Save
+          </button>
+        </span>
+      </div>
+      <div class="limits lil-gui children preset-list">
+        <div v-if="presets.length === 0" class="no-presets">
+          No presets saved yet. Click "+ Save" to save current settings.
+        </div>
+        <div
+          v-for="preset in presets"
+          :key="preset"
+          class="preset-item"
+        >
+          <button
+            class="preset-name"
+            title="Click to apply preset"
+            @click="applyPreset(preset)"
+          >
+            {{ preset }}
+          </button>
+          <div class="preset-item-actions">
+            <button
+              class="preset-action-btn"
+              title="Overwrite preset with current settings"
+              @click="overwritePreset(preset)"
+            >
+              💾
+            </button>
+            <button
+              class="preset-action-btn"
+              title="Rename preset"
+              @click="openRenamePresetModal(preset)"
+            >
+              ✎
+            </button>
+            <button
+              class="preset-action-btn delete"
+              title="Delete preset"
+              @click="deletePreset(preset)"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="free-play-container lil-gui root">
       <div class="title">
         <span>Parameters</span>
@@ -197,56 +254,6 @@
               </div>
             </div>
           </template>
-        </div>
-      </div>
-    </div>
-
-    <!-- Presets Section -->
-    <div class="free-play-container lil-gui root">
-      <div class="title">
-        <span>Presets</span>
-        <span class="preset-actions">
-          <button
-            class="preset-save-btn"
-            title="Save current settings as preset"
-            @click="openSavePresetModal"
-          >
-            + Save
-          </button>
-        </span>
-      </div>
-      <div class="limits lil-gui children preset-list">
-        <div v-if="presets.length === 0" class="no-presets">
-          No presets saved yet. Click "+ Save" to save current settings.
-        </div>
-        <div
-          v-for="preset in presets"
-          :key="preset"
-          class="preset-item"
-        >
-          <button
-            class="preset-name"
-            title="Click to apply preset"
-            @click="applyPreset(preset)"
-          >
-            {{ preset }}
-          </button>
-          <div class="preset-item-actions">
-            <button
-              class="preset-action-btn"
-              title="Rename preset"
-              @click="openRenamePresetModal(preset)"
-            >
-              ✎
-            </button>
-            <button
-              class="preset-action-btn delete"
-              title="Delete preset"
-              @click="deletePreset(preset)"
-            >
-              ✕
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -872,6 +879,15 @@ export default {
 
       this.notify.success({
         content: `Applied preset "${name}"`,
+      });
+    },
+
+    overwritePreset (name) {
+      const data = this.getCurrentParameters();
+      presetStorage.save(name, data);
+
+      this.notify.success({
+        content: `Preset "${name}" overwritten`,
       });
     },
 
