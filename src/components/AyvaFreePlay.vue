@@ -82,6 +82,7 @@
           </div>
           <ayva-slider
             ref="bpmSlider"
+            v-model="bpmValue"
             :options="bpmOptions"
             storage-key="free-play-bpm"
             @update="onUpdate('bpm', $event)"
@@ -94,6 +95,7 @@
           </div>
           <ayva-slider
             ref="accelerationSlider"
+            v-model="accelerationValue"
             :options="accelerationOptions"
             :disabled="disableAcceleration"
             storage-key="free-play-acceleration"
@@ -107,6 +109,7 @@
           </div>
           <ayva-slider
             ref="patternDurationSlider"
+            v-model="patternDurationValue"
             :options="patternDurationOptions"
             storage-key="free-play-pattern-duration"
             @update="onUpdate('pattern-duration', $event)"
@@ -118,6 +121,8 @@
             Transition Duration
           </div>
           <ayva-slider
+            ref="transitionDurationSlider"
+            v-model="transitionDurationValue"
             :options="transitionDurationOptions"
             storage-key="free-play-transition-duration"
             @update="onUpdate('transition-duration', $event)"
@@ -142,6 +147,8 @@
           </div>
 
           <ayva-slider
+            ref="twistRangeSlider"
+            v-model="twistRangeValue"
             :options="twistRangeOptions"
             :disabled="disableTwist"
             storage-key="free-play-twist-range"
@@ -157,6 +164,8 @@
             Twist Phase
           </div>
           <ayva-slider
+            ref="twistPhaseSlider"
+            v-model="twistPhaseValue"
             :options="twistPhaseOptions"
             :disabled="disableTwist"
             storage-key="free-play-twist-phase"
@@ -173,6 +182,7 @@
           </div>
           <ayva-slider
             ref="twistEccSlider"
+            v-model="twistEccValue"
             :options="twistEccOptions"
             :disabled="disableTwist"
             storage-key="free-play-twist-ecc"
@@ -413,6 +423,15 @@ export default {
   data () {
     return {
       twist: false,
+
+      // v-model 绑定的滑块值
+      bpmValue: [20, 60],
+      accelerationValue: [0, 20],
+      patternDurationValue: [5, 10],
+      transitionDurationValue: [2, 5],
+      twistRangeValue: [0, 1],
+      twistPhaseValue: [0],
+      twistEccValue: [0],
 
       bpmOptions: {
         range: {
@@ -812,17 +831,17 @@ export default {
     },
 
     getCurrentParameters () {
-      // Get values from slider components via refs
+      // 从 v-model 绑定的值获取当前滑块值
       const params = {
         bpmMode: this.bpmMode,
-        bpm: this.bpmOptions.start,
-        acceleration: this.accelerationOptions.start,
-        patternDuration: this.patternDurationOptions.start,
-        transitionDuration: this.transitionDurationOptions.start,
+        bpm: this.bpmValue,
+        acceleration: this.accelerationValue,
+        patternDuration: this.patternDurationValue,
+        transitionDuration: this.transitionDurationValue,
         twist: this.twist,
-        twistRange: this.twistRangeOptions.start,
-        twistPhase: this.twistPhaseOptions.start,
-        twistEcc: this.twistEccOptions.start,
+        twistRange: this.twistRangeValue,
+        twistPhase: this.twistPhaseValue,
+        twistEcc: this.twistEccValue,
       };
 
       // Get stroke enabled states
@@ -870,20 +889,20 @@ export default {
         return;
       }
 
-      // Apply parameters
+      // Apply parameters via v-model binding
       const { params, strokes } = preset;
 
       console.log(params);
 
       this.bpmMode = params.bpmMode;
-      this.bpmOptions = { ...this.bpmOptions, start: [...params.bpm] };
-      this.accelerationOptions = { ...this.accelerationOptions, start: [...params.acceleration] };
-      this.patternDurationOptions = { ...this.patternDurationOptions, start: [...params.patternDuration] };
-      this.transitionDurationOptions = { ...this.transitionDurationOptions, start: [...params.transitionDuration] };
+      this.bpmValue = [...params.bpm];
+      this.accelerationValue = [...params.acceleration];
+      this.patternDurationValue = [...params.patternDuration];
+      this.transitionDurationValue = [...params.transitionDuration];
       this.twist = params.twist;
-      this.twistRangeOptions = { ...this.twistRangeOptions, start: [...params.twistRange] };
-      this.twistPhaseOptions = { ...this.twistPhaseOptions, start: Array.isArray(params.twistPhase) ? [...params.twistPhase] : params.twistPhase };
-      this.twistEccOptions = { ...this.twistEccOptions, start: Array.isArray(params.twistEcc) ? [...params.twistEcc] : params.twistEcc };
+      this.twistRangeValue = Array.isArray(params.twistRange) ? [...params.twistRange] : params.twistRange;
+      this.twistPhaseValue = Array.isArray(params.twistPhase) ? [...params.twistPhase] : params.twistPhase;
+      this.twistEccValue = Array.isArray(params.twistEcc) ? [...params.twistEcc] : params.twistEcc;
 
       // Apply stroke enabled states
       this.strokes.forEach((stroke) => {
@@ -921,14 +940,14 @@ export default {
 
         // Emit updates to parent component
         this.fireUpdateParameter('bpm-mode', this.bpmMode);
-        this.fireUpdateParameter('bpm', this.bpmOptions.start);
-        this.fireUpdateParameter('acceleration', this.accelerationOptions.start);
-        this.fireUpdateParameter('pattern-duration', this.patternDurationOptions.start);
-        this.fireUpdateParameter('transition-duration', this.transitionDurationOptions.start);
+        this.fireUpdateParameter('bpm', this.bpmValue);
+        this.fireUpdateParameter('acceleration', this.accelerationValue);
+        this.fireUpdateParameter('pattern-duration', this.patternDurationValue);
+        this.fireUpdateParameter('transition-duration', this.transitionDurationValue);
         this.fireUpdateParameter('twist', this.twist);
-        this.fireUpdateParameter('twist-range', this.twistRangeOptions.start);
-        this.fireUpdateParameter('twist-phase', this.twistPhaseOptions.start);
-        this.fireUpdateParameter('twist-ecc', this.twistEccOptions.start);
+        this.fireUpdateParameter('twist-range', this.twistRangeValue);
+        this.fireUpdateParameter('twist-phase', this.twistPhaseValue);
+        this.fireUpdateParameter('twist-ecc', this.twistEccValue);
 
         this.fireUpdateStrokes();
       });
