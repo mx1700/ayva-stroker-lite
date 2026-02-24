@@ -48,7 +48,7 @@
             <button
               class="preset-action-btn delete"
               title="Delete preset"
-              @click="deletePreset(preset)"
+              @click="openDeletePresetModal(preset)"
             >
               ✕
             </button>
@@ -325,6 +325,26 @@
         </div>
       </div>
     </ayva-modal>
+
+    <!-- Delete Preset Modal -->
+    <ayva-modal :show="showDeletePresetModal" @close="closeDeletePresetModal">
+      <div class="preset-modal">
+        <div class="preset-modal-title">
+          Delete Preset
+        </div>
+        <div class="preset-modal-content">
+          <p>Are you sure you want to delete preset "{{ deletingPresetName }}"?</p>
+        </div>
+        <div class="preset-modal-actions">
+          <button class="preset-modal-btn cancel" @click="closeDeletePresetModal">
+            Cancel
+          </button>
+          <button class="preset-modal-btn delete" @click="confirmDeletePreset">
+            Delete
+          </button>
+        </div>
+      </div>
+    </ayva-modal>
   </div>
 </template>
 
@@ -498,6 +518,8 @@ export default {
       presets: [],
       showSavePresetModal: false,
       showRenamePresetModal: false,
+      showDeletePresetModal: false,
+      deletingPresetName: '',
       newPresetName: '',
       editingPresetName: '',
       newPresetNameError: '',
@@ -900,6 +922,27 @@ export default {
       });
     },
 
+    openDeletePresetModal (name) {
+      this.deletingPresetName = name;
+      this.showDeletePresetModal = true;
+    },
+
+    closeDeletePresetModal () {
+      this.showDeletePresetModal = false;
+      this.deletingPresetName = '';
+    },
+
+    confirmDeletePreset () {
+      const name = this.deletingPresetName;
+      presetStorage.delete(name);
+      this.loadPresets();
+      this.closeDeletePresetModal();
+
+      this.notify.info({
+        content: `Preset "${name}" deleted`,
+      });
+    },
+
     renamePreset () {
       const oldName = this.editingPresetName;
       const newName = this.newPresetName.trim();
@@ -1205,5 +1248,14 @@ export default {
 
 .preset-modal-btn.save:hover {
   background: #1e88e5;
+}
+
+.preset-modal-btn.delete {
+  background: #ff5252;
+  color: white;
+}
+
+.preset-modal-btn.delete:hover {
+  background: #ff1744;
 }
 </style>
