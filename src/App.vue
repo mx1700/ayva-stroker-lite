@@ -56,6 +56,12 @@
       >
         <span>Stop</span> <span style="font-size: 12px">(Esc)</span>
       </button>
+      <button
+        id="upToTop"
+        @click="upToTop"
+      >
+        抬起
+      </button>
     </div>
 
     <div id="current-bpm" :style="hudStyle">
@@ -498,6 +504,17 @@ export default {
     home () {
       ayva.stop();
       ayva.home();
+    },
+
+    upToTop () {
+      ayva.stop();
+      const axes = ayva.getAxes();
+      const moves = axes.map((a) => ({
+        axis: a.name,
+        to: a.name === 'L0' ? 1 : a.defaultValue,
+        speed: 0.5,
+      }));
+      ayva.move(...moves);
     },
 
     stop () {
