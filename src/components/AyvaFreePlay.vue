@@ -12,6 +12,20 @@
           >
             + Save
           </button>
+          <button
+            class="preset-action-btn import-export"
+            title="Import presets from file"
+            @click="importPresets"
+          >
+            Import
+          </button>
+          <button
+            class="preset-action-btn import-export"
+            title="Export all presets to file"
+            @click="exportPresets"
+          >
+            Export
+          </button>
         </span>
       </div>
       <div class="limits lil-gui children preset-list">
@@ -1053,6 +1067,60 @@ export default {
       this.newPresetName = '';
       this.newPresetNameError = '';
     },
+
+    // ==================== Import/Export Presets ====================
+
+    async exportPresets () {
+      if (this.presets.length === 0) {
+        this.notify.warning({
+          content: 'No presets to export',
+          duration: 2000,
+        });
+        return;
+      }
+
+      try {
+        await presetStorage.exportAll();
+        this.notify.success({
+          content: `Exported ${this.presets.length} preset(s)`,
+          duration: 2000,
+        });
+      } catch (error) {
+        console.error(error?.stack);
+        this.notify.error({
+          content: 'Error exporting presets:',
+          meta: error.message,
+        });
+      }
+    },
+
+    async importPresets () {
+      try {
+        const renamed = await presetStorage.importAll();
+        this.loadPresets();
+
+        const count = this.presets.length;
+
+        if (renamed.length > 0) {
+          this.notify.warning({
+            content: `Imported ${count} preset(s). Some renamed due to conflicts:`,
+            meta: () => h('div', renamed.map((name) => h('div', name))),
+            duration: 4000,
+          });
+        } else {
+          this.notify.success({
+            content: `Imported ${count} preset(s)`,
+            duration: 2000,
+          });
+        }
+      } catch (error) {
+        console.error(error?.stack);
+        this.notify.error({
+          content: 'Error importing presets:',
+          meta: error.message,
+        });
+      }
+    },
   },
 };
 </script>
@@ -1152,6 +1220,8 @@ export default {
 /* Preset Section Styles */
 .preset-actions {
   margin-left: auto;
+  display: flex;
+  gap: 5px;
 }
 
 .preset-save-btn {
@@ -1167,6 +1237,17 @@ export default {
 
 .preset-save-btn:hover {
   background: #1e88e5;
+}
+
+.preset-action-btn.import-export {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ayva-text-color);
+  border-radius: 3px;
+  margin-left: 5px;
+}
+
+.preset-action-btn.import-export:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .preset-list {

@@ -2,6 +2,20 @@ import Storage from './ayva-storage.js';
 
 const storage = new Storage('free-play-presets');
 
+const fileOptions = {
+  types: [
+    {
+      description: 'Ayva Free Play Presets',
+      accept: {
+        'application/json': ['.json'],
+      },
+    },
+  ],
+  excludeAcceptAllOption: true,
+  multiple: false,
+  suggestedName: 'ayva-presets.json',
+};
+
 class FreePlayPresetStorage {
   /**
    * Load all presets from storage.
@@ -72,6 +86,70 @@ class FreePlayPresetStorage {
    */
   list () {
     return Object.keys(this.loadAll()).sort();
+  }
+
+  /**
+   * Export all presets to a JSON file.
+   */
+  async exportAll () {
+    let fileHandle;
+
+    try {
+      fileHandle = await window.showSaveFilePicker(fileOptions);
+    } catch (abortError) {
+      return;
+    }
+
+    const writable = await fileHandle.createWritable();
+    const presets = this.loadAll();
+    await writable.write(JSON.stringify(presets, null, 2));
+    await writable.close();
+  }
+
+  /**
+   * Import presets from a JSON file.
+   * Presets with conflicting names will be renamed.
+   * @returns {Array<string>} Array of imported preset names (may differ from original if renamed).
+   */
+  async importAll () {
+    let fileHandle;
+
+    try {
+      [fileHandle] = await window.showOpenFilePicker(fileOptions);
+    } catch (abortError) {
+      return [];
+    }
+
+    const file = await fileHandle.getFile();
+    const importedPresets = JSON.parse(await file.text());
+
+    if (typeof importedPresets !== 'object' || importedPresets === null) {
+      throw new SyntaxError('Invalid preset file.');
+    }
+
+    const currentPresets = this.loadAll();
+    const renamed = [];
+
+    for (const [name, data] of Object.entries(importedPresets)) {
+      let finalName = name;
+
+      if (currentPresets[finalName] || this.list().includes(finalName)) {
+        // Append a number to preset name when there is a conflict.
+        let nextIndex = 2;
+
+        while (currentPresets[finalName] || this.list().includes(finalName)) {
+          finalName = `${name}-${nextIndex++}`;
+        }
+
+        renamed.push(finalName);
+      }
+
+      currentPresets[finalName] = data;
+    }
+
+    storage.save('all', currentPresets);
+
+    return renamed;
   }
 }
 
