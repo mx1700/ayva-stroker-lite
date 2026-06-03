@@ -144,12 +144,14 @@ import { formatter, eventMixin, triggerMouseEvent } from './lib/util.js';
 import CustomBehaviorStorage from './lib/custom-behavior-storage';
 import settingsStorage from './lib/settings-storage';
 import RubjoyBLEDevice from './lib/rubjoy-ble-device.js';
+import GamepadManager from './lib/gamepad.js';
 
 // These need to be "globals" so they aren't proxied by Vue... because issues with private members :(
 const ayva = createAyva();
 
 let controller;
 let emulator;
+let gamepadManager;
 
 export default {
 
@@ -319,6 +321,16 @@ export default {
 
     watchProperties.forEach((prop) => this.$watch(prop, () => this.updateController(), { immediate: true, deep: true }));
 
+    gamepadManager = new GamepadManager();
+    gamepadManager.onButtonPress('START', () => {
+      if (this.mode === 'Free Play') {
+        this.stop();
+      } else {
+        this.freePlay();
+      }
+    });
+    gamepadManager.start();
+
     window.addEventListener('keyup', (event) => {
       const noModals = this.modals.count === 0;
 
@@ -355,6 +367,13 @@ export default {
     this.showReleaseNotes = this.globalSettings.load('show-release-notes-1.47.0') ?? true;
 
     this.patreonPromo();
+  },
+
+  unmounted () {
+    if (gamepadManager) {
+      gamepadManager.stop();
+      gamepadManager = null;
+    }
   },
 
   methods: {

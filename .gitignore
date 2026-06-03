@@ -3,3 +3,4 @@ node_modules
 test-output
 src/.sandbox.*
 dist
+dist_electron
