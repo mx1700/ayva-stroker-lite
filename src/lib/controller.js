@@ -35,6 +35,7 @@ class Controller extends GeneratorBehavior {
       active: false,
       updated: false,
       value: null,
+      locked: false,
     });
 
     Object.keys(scriptGlobals).forEach((key) => {
@@ -133,7 +134,9 @@ class Controller extends GeneratorBehavior {
   }
 
   * #transitionTempestStroke (ayva, strokeConfig) {
-    this.#bpm = this.#generateNextBpm();
+    this.#bpm = this.bpmSliderState.locked
+      ? (this.bpmSliderState.value ?? 60)
+      : this.#generateNextBpm();
     const bpmProvider = this.#createBpmProvider();
 
     if (this.#currentBehavior instanceof TempestStroke || scriptGlobals.output instanceof TempestStroke) {
@@ -230,6 +233,13 @@ class Controller extends GeneratorBehavior {
 
   #createBpmProvider () {
     const bpmProvider = () => {
+      if (this.bpmSliderState.locked) {
+        if (this.bpmSliderState.value != null) {
+          this.#bpm = this.bpmSliderState.value;
+        }
+        return this.#bpm;
+      }
+
       if (!this.#freePlay || this.bpmSliderState.active || this.bpmSliderState.updated) {
         // Use user supplied bpm from slider.
         this.#bpm = this.bpmSliderState.value;

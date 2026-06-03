@@ -80,6 +80,13 @@
         class="label"
         :disabled="bpmDisabled ? '' : null"
       >
+        <button
+          class="bpm-lock-toggle"
+          :class="{ locked: bpmSliderLocked }"
+          @click="bpmSliderLocked = !bpmSliderLocked"
+        >
+          {{ bpmSliderLocked ? 'Locked' : 'Auto' }}
+        </button>
         <span>Current BPM</span>
       </div>
     </div>
@@ -203,6 +210,7 @@ export default {
       currentBpm: 60,
       currentStrokeName: 'None',
       bpmDisabled: false,
+      bpmSliderLocked: false,
       bpmAnimationFrame: null,
 
       bpmSliderOptions: {
@@ -434,6 +442,7 @@ export default {
         controller.parameters = this.parameters;
         controller.bpmSliderState.active = this.bpmSliderActive;
         controller.bpmSliderState.value = this.currentBpm;
+        controller.bpmSliderState.locked = this.bpmSliderLocked;
       }
     },
 
@@ -481,16 +490,18 @@ export default {
       if (!controller) {
         controller = new AyvaController();
         controller.on('transition-start', (duration, targetBpm) => {
-          this.createBpmAnimation(duration, targetBpm);
+          if (!this.bpmSliderLocked) {
+            this.createBpmAnimation(duration, targetBpm);
+            this.bpmDisabled = true;
+          }
           this.currentStrokeName = 'Transitioning...';
-          this.bpmDisabled = true;
         });
 
         controller.on('transition-end', (stroke, bpm) => {
           this.currentStrokeName = typeof stroke === 'string' ? stroke : 'Custom';
           this.bpmDisabled = false;
           this.clearBpmAnimation();
-          if (bpm) {
+          if (bpm && !this.bpmSliderLocked) {
             this.setBpm(bpm);
           }
         });
@@ -664,5 +675,25 @@ export default {
   z-index: 1000;
   left: 2vw;
   font-size: 0.75rem;
+}
+
+#current-bpm .bpm-lock-toggle {
+  width: auto;
+  height: auto;
+  background: transparent;
+  border: 1px solid var(--ayva-text-color-blue);
+  color: var(--ayva-text-color-blue);
+  padding: 0 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: bold;
+  transition: all 0.2s;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.bpm-lock-toggle.locked {
+  background: var(--ayva-text-color-blue);
+  color: #1a1a2e;
 }
 </style>
