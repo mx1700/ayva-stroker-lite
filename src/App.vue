@@ -337,6 +337,26 @@ export default {
         this.freePlay();
       }
     });
+    gamepadManager.onAxisChange('RIGHT_STICK_Y', (value) => {
+      const DEADZONE = 0.15;
+      if (Math.abs(value) < DEADZONE) return;
+
+      const bpm = Math.round(50 - value * 50);
+
+      if (bpm === 0) {
+        this.stop();
+        return;
+      }
+
+      const clampedBpm = Math.max(10, Math.min(100, bpm));
+      this.currentBpm = clampedBpm;
+      this.setBpm(clampedBpm);
+      this.bpmSliderLocked = true;
+
+      if (this.mode === 'Stopped') {
+        this.freePlay();
+      }
+    });
     gamepadManager.start();
 
     window.addEventListener('keyup', (event) => {
