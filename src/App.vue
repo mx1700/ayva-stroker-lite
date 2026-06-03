@@ -6,6 +6,7 @@
     <ayva-mode :mode="mode" />
 
     <ayva-free-play
+      ref="freePlay"
       :mode="mode"
       :current-stroke-name="currentStrokeName"
       :style="hudStyle"
@@ -149,6 +150,7 @@ import Storage from './lib/ayva-storage';
 import PatreonIcon from './assets/icons/patreon.svg';
 import { formatter, eventMixin, triggerMouseEvent } from './lib/util.js';
 import CustomBehaviorStorage from './lib/custom-behavior-storage';
+import FreePlayPresetStorage from './lib/free-play-preset-storage.js';
 import settingsStorage from './lib/settings-storage';
 import RubjoyBLEDevice from './lib/rubjoy-ble-device.js';
 import GamepadManager from './lib/gamepad.js';
@@ -340,6 +342,20 @@ export default {
     gamepadManager.onButtonPress('SELECT', () => {
       this.upToTop();
     });
+
+    const presetStorage = new FreePlayPresetStorage();
+    ['A', 'B', 'X', 'Y'].forEach((btn) => {
+      gamepadManager.onButtonPress(btn, () => {
+        const presets = presetStorage.loadAll();
+        for (const [name, data] of Object.entries(presets)) {
+          if (data.button === btn) {
+            this.$refs.freePlay.applyPreset(name);
+            return;
+          }
+        }
+      });
+    });
+
     gamepadManager.onAxisChange('RIGHT_STICK_Y', (value) => {
       const DEADZONE = 0.15;
       if (Math.abs(value) < DEADZONE) return;

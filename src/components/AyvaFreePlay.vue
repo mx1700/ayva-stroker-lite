@@ -34,35 +34,36 @@
         </div>
         <div
           v-for="preset in presets"
-          :key="preset"
+          :key="preset.name"
           class="preset-item"
         >
           <button
             class="preset-name"
             title="Click to apply preset"
-            @click="applyPreset(preset)"
+            @click="applyPreset(preset.name)"
           >
-            {{ preset }}
+            {{ preset.name }}
           </button>
+          <span v-if="preset.button" class="preset-button-badge">[{{ preset.button }}]</span>
           <div class="preset-item-actions">
             <button
               class="preset-action-btn"
               title="Overwrite preset with current settings"
-              @click="overwritePreset(preset)"
+              @click="confirmOverwritePreset(preset.name)"
             >
               💾
             </button>
             <button
               class="preset-action-btn"
-              title="Rename preset"
-              @click="openRenamePresetModal(preset)"
+              title="Edit preset name and button binding"
+              @click="openEditPresetModal(preset.name)"
             >
               ✎
             </button>
             <button
               class="preset-action-btn delete"
               title="Delete preset"
-              @click="openDeletePresetModal(preset)"
+              @click="openDeletePresetModal(preset.name)"
             >
               ✕
             </button>
@@ -312,6 +313,22 @@
           <div v-if="newPresetNameError" class="preset-error">
             {{ newPresetNameError }}
           </div>
+          <div class="preset-button-select">
+            <label>Gamepad Button:</label>
+            <select v-model="newPresetButton" class="preset-button-dropdown">
+              <option :value="null">
+                None
+              </option>
+              <option
+                v-for="btn in ['A','B','X','Y']"
+                :key="btn"
+                :value="btn"
+                :disabled="isButtonTaken(btn, null)"
+              >
+                {{ btn }}{{ isButtonTaken(btn, null) ? ' (已绑定: ' + getButtonAssignedTo(btn) + ')' : '' }}
+              </option>
+            </select>
+          </div>
         </div>
         <div class="preset-modal-actions">
           <button class="preset-modal-btn cancel" @click="closeSavePresetModal">
@@ -324,31 +341,47 @@
       </div>
     </ayva-modal>
 
-    <!-- Rename Preset Modal -->
-    <ayva-modal :show="showRenamePresetModal" @close="closeRenamePresetModal">
+    <!-- Edit Preset Modal -->
+    <ayva-modal :show="showEditPresetModal" @close="closeEditPresetModal">
       <div class="preset-modal">
         <div class="preset-modal-title">
-          Rename Preset
+          Edit Preset
         </div>
         <div class="preset-modal-content">
           <input
             v-model="newPresetName"
             type="text"
             class="preset-name-input"
-            placeholder="Enter new preset name"
-            @keyup.enter="renamePreset"
-            @keyup.escape="closeRenamePresetModal"
+            placeholder="Enter preset name"
+            @keyup.enter="saveEditPreset"
+            @keyup.escape="closeEditPresetModal"
           >
-          <div v-if="newPresetNameError" class="preset-error">
-            {{ newPresetNameError }}
+          <div v-if="editPresetError" class="preset-error">
+            {{ editPresetError }}
+          </div>
+          <div class="preset-button-select">
+            <label>Gamepad Button:</label>
+            <select v-model="editPresetButton" class="preset-button-dropdown">
+              <option :value="null">
+                None
+              </option>
+              <option
+                v-for="btn in ['A','B','X','Y']"
+                :key="btn"
+                :value="btn"
+                :disabled="isButtonTaken(btn, editingPresetName)"
+              >
+                {{ btn }}{{ isButtonTaken(btn, editingPresetName) ? ' (已绑定: ' + getButtonAssignedTo(btn) + ')' : '' }}
+              </option>
+            </select>
           </div>
         </div>
         <div class="preset-modal-actions">
-          <button class="preset-modal-btn cancel" @click="closeRenamePresetModal">
+          <button class="preset-modal-btn cancel" @click="closeEditPresetModal">
             Cancel
           </button>
-          <button class="preset-modal-btn save" @click="renamePreset">
-            Rename
+          <button class="preset-modal-btn save" @click="saveEditPreset">
+            Save
           </button>
         </div>
       </div>
@@ -554,16 +587,23 @@ export default {
       // Preset management
       presets: [],
       showSavePresetModal: false,
-      showRenamePresetModal: false,
+      showEditPresetModal: false,
       showDeletePresetModal: false,
       deletingPresetName: '',
       newPresetName: '',
       editingPresetName: '',
       newPresetNameError: '',
+      editPresetError: '',
+      newPresetButton: null,
+      editPresetButton: null,
     };
   },
 
   computed: {
+    presetNames () {
+      return this.presets.map((p) => p.name);
+    },
+
     disableTwist () {
       return !this.twist ? '' : null;
     },
@@ -841,7 +881,13 @@ export default {
     // ==================== Preset Management ====================
 
     loadPresets () {
-      this.presets = presetStorage.list();
+      const allPresets = presetStorage.loadAll();
+      this.presets = Object.entries(allPresets)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, data]) => ({
+          name,
+          button: data.button || null,
+        }));
     },
 
     getCurrentParameters () {
@@ -878,12 +924,17 @@ export default {
         return;
       }
 
-      if (this.presets.includes(name)) {
-        this.newPresetNameError = 'Preset name already exists';
+      if (this.newPresetButton && this.presets.some((p) => p.button === this.newPresetButton && p.name !== name)) {
+        this.newPresetNameError = `Button [${this.newPresetButton}] is already bound to preset "${this.getButtonAssignedTo(this.newPresetButton)}"`;
+        return;
+      }
+
+      if (this.presetNames.includes(name) && !confirm(`Preset "${name}" already exists. Overwrite?`)) {
         return;
       }
 
       const data = this.getCurrentParameters();
+      data.button = this.newPresetButton || null;
       presetStorage.save(name, data);
       this.loadPresets();
       this.closeSavePresetModal();
@@ -971,9 +1022,19 @@ export default {
       });
     },
 
+    confirmOverwritePreset (name) {
+      if (confirm(`Overwrite preset "${name}" with current settings?`)) {
+        this.overwritePreset(name);
+      }
+    },
+
     overwritePreset (name) {
       const data = this.getCurrentParameters();
+      const existing = presetStorage.get(name);
+      data.button = existing ? (existing.button || null) : null;
       presetStorage.save(name, data);
+
+      this.loadPresets();
 
       this.notify.success({
         content: `Preset "${name}" overwritten`,
@@ -1011,40 +1072,53 @@ export default {
       });
     },
 
-    renamePreset () {
+    saveEditPreset () {
       const oldName = this.editingPresetName;
       const newName = this.newPresetName.trim();
 
       if (!newName) {
-        this.newPresetNameError = 'Preset name cannot be empty';
+        this.editPresetError = 'Preset name cannot be empty';
         return;
       }
 
-      if (this.presets.includes(newName) && newName !== oldName) {
-        this.newPresetNameError = 'Preset name already exists';
+      if (this.presetNames.includes(newName) && newName !== oldName) {
+        this.editPresetError = 'Preset name already exists';
         return;
       }
 
-      const success = presetStorage.rename(oldName, newName);
+      if (this.editPresetButton && this.presets.some((p) => p.button === this.editPresetButton && p.name !== oldName)) {
+        this.editPresetError = `Button [${this.editPresetButton}] is already bound to preset "${this.getButtonAssignedTo(this.editPresetButton)}"`;
+        return;
+      }
 
-      if (success) {
-        this.loadPresets();
-        this.closeRenamePresetModal();
-
-        this.notify.success({
-          content: `Preset renamed to "${newName}"`,
-          duration: 1000,
-        });
-      } else {
+      const existingData = presetStorage.get(oldName);
+      if (!existingData) {
         this.notify.error({
-          content: 'Failed to rename preset',
+          content: `Preset "${oldName}" not found`,
         });
+        return;
       }
+
+      if (oldName !== newName) {
+        presetStorage.delete(oldName);
+      }
+
+      existingData.button = this.editPresetButton || null;
+      presetStorage.save(newName, existingData);
+
+      this.loadPresets();
+      this.closeEditPresetModal();
+
+      this.notify.success({
+        content: `Preset "${newName}" updated`,
+        duration: 1000,
+      });
     },
 
     openSavePresetModal () {
       this.newPresetName = '';
       this.newPresetNameError = '';
+      this.newPresetButton = null;
       this.showSavePresetModal = true;
     },
 
@@ -1052,20 +1126,37 @@ export default {
       this.showSavePresetModal = false;
       this.newPresetName = '';
       this.newPresetNameError = '';
+      this.newPresetButton = null;
     },
 
-    openRenamePresetModal (name) {
+    openEditPresetModal (name) {
       this.editingPresetName = name;
       this.newPresetName = name;
-      this.newPresetNameError = '';
-      this.showRenamePresetModal = true;
+      this.editPresetError = '';
+
+      const existingData = presetStorage.get(name);
+      this.editPresetButton = existingData ? (existingData.button || null) : null;
+
+      this.showEditPresetModal = true;
     },
 
-    closeRenamePresetModal () {
-      this.showRenamePresetModal = false;
+    closeEditPresetModal () {
+      this.showEditPresetModal = false;
       this.editingPresetName = '';
       this.newPresetName = '';
-      this.newPresetNameError = '';
+      this.editPresetError = '';
+      this.editPresetButton = null;
+    },
+
+    isButtonTaken (button, excludePresetName) {
+      if (!button) return false;
+      return this.presets.some((p) => p.button === button && p.name !== excludePresetName);
+    },
+
+    getButtonAssignedTo (button) {
+      if (!button) return null;
+      const preset = this.presets.find((p) => p.button === button);
+      return preset ? preset.name : null;
     },
 
     // ==================== Import/Export Presets ====================
@@ -1393,5 +1484,50 @@ export default {
 
 .preset-modal-btn.delete:hover {
   background: #ff1744;
+}
+
+.preset-button-badge {
+  color: var(--ayva-blue);
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+  padding: 1px 4px;
+  border: 1px solid var(--ayva-blue);
+  border-radius: 3px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.preset-button-select {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.preset-button-select label {
+  font-size: 13px;
+  color: var(--ayva-text-color);
+  white-space: nowrap;
+}
+
+.preset-button-dropdown {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--ayva-text-color);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.preset-button-dropdown:focus {
+  outline: none;
+  border-color: var(--ayva-blue);
+}
+
+.preset-button-dropdown option:disabled {
+  color: rgba(255, 255, 255, 0.35);
 }
 </style>
