@@ -357,9 +357,6 @@ export default {
     });
 
     gamepadManager.onAxisChange('RIGHT_STICK_Y', (value) => {
-      const DEADZONE = 0.15;
-      if (Math.abs(value) < DEADZONE) return;
-
       const bpm = Math.round(50 - value * 50);
 
       if (bpm === 0) {
