@@ -337,6 +337,9 @@ export default {
         this.freePlay();
       }
     });
+    gamepadManager.onButtonPress('SELECT', () => {
+      this.upToTop();
+    });
     gamepadManager.onAxisChange('RIGHT_STICK_Y', (value) => {
       const DEADZONE = 0.15;
       if (Math.abs(value) < DEADZONE) return;
