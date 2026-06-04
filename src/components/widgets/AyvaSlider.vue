@@ -79,8 +79,8 @@ export default {
 
     modelValue (newValue) {
       if (!_.isEqual(newValue, this.value)) {
-        if (newValue.length) {
-          this.slider.set(...newValue);
+        if (Array.isArray(newValue)) {
+          this.slider.set(newValue);
         } else {
           this.slider.set(newValue);
         }

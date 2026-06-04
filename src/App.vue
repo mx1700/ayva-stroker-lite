@@ -365,9 +365,13 @@ export default {
       }
 
       const clampedBpm = Math.max(10, Math.min(100, bpm));
-      this.currentBpm = clampedBpm;
-      this.setBpm(clampedBpm);
-      this.bpmSliderLocked = true;
+
+      if (this.bpmSliderLocked) {
+        this.currentBpm = clampedBpm;
+        this.setBpm(clampedBpm);
+      } else {
+        this.$refs.freePlay.bpmValue = [clampedBpm, clampedBpm];
+      }
 
       if (this.mode === 'Stopped') {
         this.freePlay();
