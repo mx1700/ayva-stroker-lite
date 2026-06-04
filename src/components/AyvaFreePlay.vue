@@ -4,7 +4,7 @@
     <div class="free-play-container lil-gui root">
       <div class="title">
         <span>Presets</span>
-        <span class="preset-actions">
+        <span class="preset-actions" @click.stop>
           <button
             class="preset-save-btn"
             title="Save current settings as preset"
